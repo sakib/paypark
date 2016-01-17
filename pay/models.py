@@ -52,3 +52,13 @@ class PaymentDB(db.Model):
     time = db.Column(db.DateTime, nullable=False)
     card_number = db.Column(db.BigInteger, db.ForeignKey('cards.number'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+
+class ParkingHistoryDB(db.Model):
+    __tablename__ = 'parking_history'
+    id = db.Column(db.Integer, primary_key=True, nullable=False)
+    parking_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=True, default=0)
+    active = db.Column(db.Integer, nullable=False)

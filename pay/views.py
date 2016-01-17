@@ -69,6 +69,14 @@ def payments():
         user_id = request.json.get('user_id')
         time = datetime.now()
 
+        card = CardDB.query.filter_by(number=card_number).first()
+        user = UserDB.query.filter_by(id=user_id).first()
+
+        if user is None or card is None:
+            return "Fuck you"
+
+        user.balance -= float(amount)
+
         payment = PaymentDB(amount=amount, time=time,
                 card_number=card_number, user_id=user_id)
         db.session.add(payment)
@@ -157,6 +165,9 @@ def claim():
             user.current_parking = parking.id
             parking.current_vehicle = vehicle.id
             parking.num_spots -= 1
+            parking_history_entry = ParkingHistoryDB(parking_id=parking_id,
+                user_id=user_id, start_time=datetime.now(), active=1)
+            db.session.add(parking_history_entry)
             db.session.commit()
             return "Success"
         else:
@@ -174,16 +185,19 @@ def relinquish():
         parking = ParkingDB.query.filter_by(id=parking_id).first()
         vehicle_id = request.json.get('vehicle_id')
         vehicle = VehicleDB.query.filter_by(id=vehicle_id).first()
-        if parking is not None and user is not None:
+        parking_history_entry = ParkingHistoryDB.query.filter_by(user_id=user_id,
+                parking_id=parking_id, active=1).first()
+        if parking is not None and user is not None and parking_history_entry is not None:
             end_time = datetime.now()
             start_time = user.last_claimed
-            print end_time, start_time
             delta = end_time - start_time
-            charge = delta.total_seconds()/60 * parking.rate
+            charge = delta.total_seconds()/3600 * parking.rate
             user.balance += charge
             user.current_parking = 0
             parking.current_vehicle = 0
             parking.num_spots += 1
+            parking_history_entry.active = 0
+            parking_history_entry.end_time = datetime.now()
             db.session.commit()
             return "Success"
         else:
@@ -238,7 +252,7 @@ def get_parking_json(parking):
             'longitude': parking.long,
             'num_spots': parking.num_spots,
             'street': parking.street,
-            'rate': '{:20,.2f}'.format(parking.rate) }
+            'rate': str('{:20,.2f}'.format(parking.rate)) }
 
 
 def get_user_json(user):
@@ -255,7 +269,7 @@ def get_user_json(user):
     if parking is None:
         return {'id': user.id,
                 'last_claimed': str(user.last_claimed),
-                'balance': '{:20,.2f}'.format(user.balance),
+                'balance': str('{:20,.2f}'.format(user.balance)),
                 'vehicles': vehicle_json,
                 'cards': cards_json }
     else:
@@ -263,7 +277,7 @@ def get_user_json(user):
         return {'id': user.id,
                 'last_claimed': str(user.last_claimed),
                 'current_parking': parking_json,
-                'balance': '{:20,.2f}'.format(user.balance),
+                'balance': str('{:20,.2f}'.format(user.balance)),
                 'vehicles': vehicle_json,
                 'cards': cards_json }
 
@@ -288,7 +302,7 @@ def get_payment_json(payment):
     card = CardDB.query.filter_by(number=payment.card_number).first()
     card_json = get_card_json(card)
     return {'id': payment.id,
-            'amount': '{:20,.2f}'.format(payment.amount),
+            'amount': str('{:20,.2f}'.format(payment.amount)),
             'time': str(payment.time),
             'user_id': payment.user_id,
             'card': card_json }
