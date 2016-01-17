@@ -50,5 +50,5 @@ class PaymentDB(db.Model):
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     amount = db.Column(db.Float(precision=2), nullable=False)
     time = db.Column(db.DateTime, nullable=False)
-    card_number = db.Column(db.Integer, db.ForeignKey('cards.number'), nullable=False)
+    card_number = db.Column(db.BigInteger, db.ForeignKey('cards.number'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
