@@ -238,7 +238,7 @@ def get_parking_json(parking):
             'longitude': parking.long,
             'num_spots': parking.num_spots,
             'street': parking.street,
-            'rate': parking.rate }
+            'rate': '{:20,.2f}'.format(parking.rate) }
 
 
 def get_user_json(user):
@@ -255,7 +255,7 @@ def get_user_json(user):
     if parking is None:
         return {'id': user.id,
                 'last_claimed': str(user.last_claimed),
-                'balance': user.balance,
+                'balance': '{:20,.2f}'.format(user.balance),
                 'vehicles': vehicle_json,
                 'cards': cards_json }
     else:
@@ -263,7 +263,7 @@ def get_user_json(user):
         return {'id': user.id,
                 'last_claimed': str(user.last_claimed),
                 'current_parking': parking_json,
-                'balance': user.balance,
+                'balance': '{:20,.2f}'.format(user.balance),
                 'vehicles': vehicle_json,
                 'cards': cards_json }
 
@@ -288,7 +288,7 @@ def get_payment_json(payment):
     card = CardDB.query.filter_by(number=payment.card_number).first()
     card_json = get_card_json(card)
     return {'id': payment.id,
-            'amount': payment.amount,
+            'amount': '{:20,.2f}'.format(payment.amount),
             'time': str(payment.time),
             'user_id': payment.user_id,
             'card': card_json }
