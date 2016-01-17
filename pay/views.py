@@ -1,13 +1,52 @@
 #!venv/bin/python
 from flask import request, jsonify, url_for, render_template
 from pay import app, db, auth
-from models import ParkingDB
+from models import *
 
 
 @app.route('/')
-@app.route('/index')
 def index():
-    return "Hello World!"
+    return "Fuck you!"
+
+
+@app.route('/users', methods=['GET','POST'])
+def users():
+    if request.method == 'GET':
+        users = UserDB.query.all()
+        json_users = map(get_user_json, users)
+        return jsonify(users=json_users)
+    if request.method == 'POST':
+        user = UserDB()
+        db.session.add(user)
+        db.session.commit()
+        return "Success"
+    return "Fuck you"
+
+
+@app.route('/vehicles', methods=['POST'])
+def vehicles():
+    if request.method == 'POST':
+        user_id = request.json.get('user_id')
+
+        user = UserDB.query.filter_by(id=user_id).first()
+        if user is None:
+            return "Fuck you"
+
+        make = request.json.get('make')
+        model = request.json.get('model')
+        year = request.json.get('year')
+        license = request.json.get('license')
+
+        vehicle = VehicleDB(make=make, model=model,
+                            year=year, license=license)
+        db.session.add(vehicle)
+
+        entry = UserToVehicleDB(user_id=user_id,
+                                vehicle_id=vehicle.id)
+        db.session.add(entry)
+        db.session.commit()
+        return "Success"
+    return "Fuck you"
 
 
 @app.route('/claim', methods=['POST'])
@@ -77,4 +116,29 @@ def get_parking_json(parking):
             'num_spots': parking.num_spots,
             'street': parking.street,
             'rate': parking.rate }
+
+
+def get_user_json(user):
+
+    vehicle_entries = UserToVehicleDB.query.filter_by(user_id=user.id).all()
+
+    vehicles = []
+
+    for entry in vehicle_entries:
+        vehicles.add(VehicleDB.query.filter_by(id=entry.vehicle_id).all())
+
+    vehicle_json = map(get_vehicle_json, vehicles)
+
+    return {'id': user.id,
+            'last_claimed': user.last_claimed,
+            'balance': user.balance,
+            'vehicles': jsonify(vehicles=vehicle_json) }
+
+
+def get_vehicle_json(vehicle):
+    return {'id': vehicle.id,
+            'make': vehicle.make,
+            'model': vehicle.model,
+            'year': vehicle.year,
+            'license': vehicle.license }
 
