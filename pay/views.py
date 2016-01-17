@@ -216,7 +216,7 @@ def register():
             num_spots=num_spots, street=street, rate=rate)
 
         parking_exists = ParkingDB.query.filter_by(lat=lat,
-                            long=long, street=street).all()
+                            long=long, street=street).first()
         if parking_exists is not None:
             parking_exists.num_spots = num_spots
             parking_exists.rate = rate
