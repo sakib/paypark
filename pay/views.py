@@ -14,7 +14,29 @@ def index():
 def claim():
     if request.method == 'POST':
         parking_id = request.json.get('parking_id')
-        parking = ParkingDB.query
+        parking = ParkingDB.query.filter_by(id=parking_id).first()
+        if parking is not None:
+            parking.num_spots -= 1
+            db.session.commit()
+            return "Success"
+        else:
+            return "Failure"
+    return "Fuck you"
+
+
+@app.route('/relinquish', methods=['POST'])
+def relinquish():
+    if request.method == 'POST':
+        parking_id = request.json.get('parking_id')
+        parking = ParkingDB.query.filter_by(id=parking_id).first()
+        if parking is not None:
+            parking.num_spots += 1
+            db.session.commit()
+            return "Success"
+        else:
+            return "Failure"
+    return "Fuck you"
+
 
 @app.route('/parking', methods=['GET'])
 def parking():
@@ -22,13 +44,6 @@ def parking():
         parking = ParkingDB.query.all()
         json_parking = map(get_parking_json, parking)
         return jsonify(parking=json_parking)
-    if request.method == 'POST':
-        claim_or_relinquish = int(request.json.get('id')) # -1_or_1
-        parking = ParkingDB.query.filter_by(id=id).first()
-        parking.num_spots += claim_or_relinquish
-        db.session.commit()
-        return "Success"
-    return "Fuck you"
 
 
 @app.route('/register', methods=['GET','POST'])
@@ -36,7 +51,6 @@ def register():
     if request.method == 'GET':
         return render_template("park.html")
     if request.method == 'POST':
-        print request.form
         lat = request.form['latitude']
         long = request.form['longitude']
         num_spots = request.form['num_spots']
