@@ -48,9 +48,23 @@ def cards():
         expiration_date = request.json.get('expiration_date')
         name = request.json.get('name')
         cvv = request.json.get('cvv')
-        card = CardDB(number=number, user_id=user_id, name=name,
-                cvv=cvv, expiration_date=expiration_date)
-        db.session.add(card)
+
+        card = CardDB.query.filter_by(number=number).first()
+
+        if card is None:
+            card = CardDB(number=number, user_id=user_id, name=name,
+                    cvv=cvv, expiration_date=expiration_date)
+            db.session.add(card)
+        else:
+            if user_id is not None:
+                card.user_id = user_id
+            if expiration_date is not None:
+                card.expiration_date = expiration_date
+            if name is not None:
+                card.name = name
+            if cvv is not None:
+                card.cvv = cvv
+
         db.session.commit()
         return "Success"
     return "Fuck you"
@@ -75,7 +89,7 @@ def payments():
         if user is None or card is None:
             return "Fuck you"
 
-        user.balance -= float(amount)
+        user.balance += float(amount)
 
         payment = PaymentDB(amount=amount, time=time,
                 card_number=card_number, user_id=user_id)
@@ -95,7 +109,7 @@ def payment(user_id):
     return "Fuck you"
 
 
-# Get all vehicles or add new vehicles under existing users
+# Get all vehicles or add new vehicles under existing users or edit existing vehicles
 @app.route('/vehicles', methods=['GET','POST'])
 def vehicles():
     if request.method == 'GET':
@@ -104,6 +118,7 @@ def vehicles():
         return jsonify(vehicles=json_vehicles)
     if request.method == 'POST':
         user_id = request.json.get('user_id')
+        vehicle_id = request.json.get('vehicle_id')
 
         user = UserDB.query.filter_by(id=user_id).first()
         if user is None:
@@ -114,39 +129,29 @@ def vehicles():
         year = request.json.get('year')
         license = request.json.get('license')
 
-        vehicle = VehicleDB(make=make, model=model,
+        if vehicle_id == -1: # Create new
+            vehicle = VehicleDB(make=make, model=model,
                             year=year, license=license)
-        db.session.add(vehicle)
-
-        db.session.commit()
-        entry = UserToVehicleDB(user_id=user_id,
+            db.session.add(vehicle)
+            db.session.commit()
+            entry = UserToVehicleDB(user_id=user_id,
                                 vehicle_id=vehicle.id)
-        db.session.add(entry)
+            db.session.add(entry)
+        else: # Find old
+            vehicle = VehicleDB.query.filter_by(id=vehicle_id).first()
+            if vehicle is None:
+                return "Fuck you"
+            if make is not None:
+                vehicle.make = make
+            if model is not None:
+                vehicle.model = model
+            if year is not None:
+                vehicle.year = year
+            if license is not None:
+                vehicle.license = license
+
         db.session.commit()
         return "Success"
-    return "Fuck you"
-
-
-# Edit vehicle
-@app.route('/vehicles/<vehicle_id>', methods=['POST'])
-def vehicle(vehicle_id):
-    if request.method == 'POST':
-        vehicle = VehicleDB.query.filter_by(id=vehicle_id).first()
-        if vehicle is None:
-            return "Fuck you"
-        make = request.json.get('make')
-        model = request.json.get('model')
-        year = request.json.get('year')
-        license = request.json.get('license')
-        if make is not None:
-            vehicle.make = make
-        if model is not None:
-            vehicle.model = model
-        if year is not None:
-            vehicle.year = year
-        if license is not None:
-            vehicle.license = license
-        db.session.commit()
     return "Fuck you"
 
 
@@ -192,12 +197,17 @@ def relinquish():
             start_time = user.last_claimed
             delta = end_time - start_time
             charge = delta.total_seconds()/3600 * parking.rate
-            user.balance += charge
+            user.balance -= charge
             user.current_parking = 0
             parking.current_vehicle = 0
             parking.num_spots += 1
             parking_history_entry.active = 0
             parking_history_entry.end_time = datetime.now()
+            db.session.commit()
+            card = CardDB.query.filter_by(user_id=user_id).first()
+            payment = PaymentDB(amount=-1*charge, time=parking_history_entry.end_time,
+                card_number=card.number, user_id=user_id, parking_history_id=parking_history_entry.id)
+            db.session.add(payment)
             db.session.commit()
             return "Success"
         else:
@@ -247,12 +257,22 @@ def register():
 
 
 def get_parking_json(parking):
-    return {'id': parking.id,
+    vehicle = VehicleDB.query.filter_by(id=parking.current_vehicle).first()
+    if vehicle is None:
+        return {'id': parking.id,
             'latitude': parking.lat,
             'longitude': parking.long,
             'num_spots': parking.num_spots,
             'street': parking.street,
             'rate': str('{:20,.2f}'.format(parking.rate)) }
+    else:
+        return {'id': parking.id,
+            'latitude': parking.lat,
+            'longitude': parking.long,
+            'num_spots': parking.num_spots,
+            'street': parking.street,
+            'rate': str('{:20,.2f}'.format(parking.rate)),
+            'current_vehicle': get_vehicle_json(vehicle) }
 
 
 def get_user_json(user):
@@ -302,13 +322,21 @@ def get_payment_json(payment):
     card = CardDB.query.filter_by(number=payment.card_number).first()
     card_json = get_card_json(card)
 
-    
+    ph = ParkingHistoryDB.query.filter_by(id=payment.parking_history_id).first()
 
-    return {'id': payment.id,
+    if ph is None:
+        return {'id': payment.id,
             'amount': str('{:20,.2f}'.format(payment.amount)),
             'time': str(payment.time),
             'user_id': payment.user_id,
             'card': card_json }
+    else:
+        return {'id': payment.id,
+            'amount': str('{:20,.2f}'.format(payment.amount)),
+            'time': str(payment.time),
+            'user_id': payment.user_id,
+            'card': card_json,
+            'parking_history': get_parking_history_json(ph) }
 
 
 def get_parking_history_json(ph):
