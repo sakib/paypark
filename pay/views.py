@@ -301,8 +301,22 @@ def get_card_json(card):
 def get_payment_json(payment):
     card = CardDB.query.filter_by(number=payment.card_number).first()
     card_json = get_card_json(card)
+
+    
+
     return {'id': payment.id,
             'amount': str('{:20,.2f}'.format(payment.amount)),
             'time': str(payment.time),
             'user_id': payment.user_id,
             'card': card_json }
+
+
+def get_parking_history_json(ph):
+    parking = ParkingDB.query.filter_by(id=ph.parking_id).first()
+    parking_json = get_parking_json(parking)
+    return {'id': ph.id,
+            'active': ph.active,
+            'start_time': ph.start_time,
+            'end_time': ph.end_time,
+            'user_id': ph.user_id,
+            'parking': parking_json }

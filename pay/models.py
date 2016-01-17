@@ -52,6 +52,7 @@ class PaymentDB(db.Model):
     time = db.Column(db.DateTime, nullable=False)
     card_number = db.Column(db.BigInteger, db.ForeignKey('cards.number'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    parking_history_id = db.Column(db.Integer, nullable=True, default=0) # ForeignKey: parking_history.id
 
 
 class ParkingHistoryDB(db.Model):
