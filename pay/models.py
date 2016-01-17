@@ -43,3 +43,12 @@ class ParkingDB(db.Model):
     street = db.Column(db.String(128), nullable=False)
     rate = db.Column(db.Float(precision=2), nullable=False)
     current_vehicle = db.Column(db.Integer, nullable=True, default=0) # ForeignKey: vehicle.id
+
+
+class PaymentDB(db.Model):
+    __tablename__ = 'payments'
+    id = db.Column(db.Integer, primary_key=True, nullable=False)
+    amount = db.Column(db.Float(precision=2), nullable=False)
+    time = db.Column(db.DateTime, nullable=False)
+    card_number = db.Column(db.Integer, db.ForeignKey('cards.number'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
