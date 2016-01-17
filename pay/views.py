@@ -91,8 +91,12 @@ def claim():
         user = UserDB.query.filter_by(id=user_id).first()
         parking_id = request.json.get('parking_id')
         parking = ParkingDB.query.filter_by(id=parking_id).first()
-        if parking is not None and user is not None:
+        vehicle_id = request.json.get('vehicle_id')
+        vehicle = VehicleDB.query.filter_by(id=vehicle_id).first()
+        if parking is not None and user is not None and vehicle is not None:
             user.last_claimed = datetime.now()
+            user.current_parking = parking.id
+            parking.current_vehicle = vehicle.id
             parking.num_spots -= 1
             db.session.commit()
             return "Success"
@@ -108,12 +112,17 @@ def relinquish():
         user = UserDB.query.filter_by(id=user_id).first()
         parking_id = request.json.get('parking_id')
         parking = ParkingDB.query.filter_by(id=parking_id).first()
+        vehicle_id = request.json.get('vehicle_id')
+        vehicle = VehicleDB.query.filter_by(id=vehicle_id).first()
         if parking is not None and user is not None:
             end_time = datetime.now()
             start_time = user.last_claimed
+            print end_time, start_time
             delta = end_time - start_time
-            charge = delta * parking.rate
+            charge = delta.total_seconds()/60 * parking.rate
             user.balance += charge
+            user.current_parking = 0
+            parking.current_vehicle = 0
             parking.num_spots += 1
             db.session.commit()
             return "Success"
@@ -174,11 +183,21 @@ def get_user_json(user):
     cards = CardDB.query.filter_by(user_id=user.id).all()
     cards_json = map(get_card_json, cards)
 
-    return {'id': user.id,
-            'last_claimed': user.last_claimed,
-            'balance': user.balance,
-            'vehicles': vehicle_json,
-            'cards': cards_json }
+    parking = ParkingDB.query.filter_by(id=user.current_parking).first()
+    if parking is None:
+        return {'id': user.id,
+                'last_claimed': str(user.last_claimed),
+                'balance': user.balance,
+                'vehicles': vehicle_json,
+                'cards': cards_json }
+    else:
+        parking_json = get_parking_json(parking)
+        return {'id': user.id,
+                'last_claimed': str(user.last_claimed),
+                'current_parking': parking_json,
+                'balance': user.balance,
+                'vehicles': vehicle_json,
+                'cards': cards_json }
 
 
 def get_vehicle_json(vehicle):
@@ -188,3 +207,9 @@ def get_vehicle_json(vehicle):
             'year': vehicle.year,
             'license': vehicle.license }
 
+def get_card_json(card):
+    return {'number': card.number,
+            'user_id': card.user_id,
+            'cvv': card.cvv,
+            'name': card.name,
+            'expiration_date': str(card.expiration_date) }
