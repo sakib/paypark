@@ -4,7 +4,7 @@ from pay import app, db
 class UserDB(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True, nullable=False)
-    last_claimed = db.Column(db.Date, nullable=False, default=None)
+    last_claimed = db.Column(db.Date, nullable=True, default=0)
     balance = db.Column(db.Float(precision=2), nullable=False, default=0)
 
 
@@ -22,6 +22,15 @@ class VehicleDB(db.Model):
     model = db.Column(db.String(50), nullable=False)
     year = db.Column(db.Integer, nullable=False)
     license = db.Column(db.String(20), nullable=False)
+
+
+class CardDB(db.Model):
+    __tablename__ = 'cards'
+    number = db.Column(db.Integer, primary_key=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    cvv = db.Column(db.Integer, nullable=False)
+    expiration_date = db.Column(db.Date, nullable=False)
+    name = db.Column(db.String(30), nullable=False)
 
 
 class ParkingDB(db.Model):

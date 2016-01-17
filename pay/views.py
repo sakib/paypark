@@ -2,6 +2,7 @@
 from flask import request, jsonify, url_for, render_template
 from pay import app, db, auth
 from models import *
+from datetime import datetime
 
 
 @app.route('/')
@@ -23,8 +24,41 @@ def users():
     return "Fuck you"
 
 
-@app.route('/vehicles', methods=['POST'])
+@app.route('/users/<user_id>', methods=['GET'])
+def user(user_id):
+    if request.method == 'GET':
+        user = UserDB.query.filter_by(id=user_id).first()
+        json_user = get_user_json(user)
+        return jsonify(user=json_user)
+    return "Fuck you"
+
+
+@app.route('/cards', methods=['GET','POST'])
+def cards():
+    if request.method == 'GET':
+        cards = CardDB.query.all()
+        json_cards = map(get_card_json, cards)
+        return jsonify(cards=json_cards)
+    if request.method == 'POST':
+        number = request.json.get('number')
+        user_id = request.json.get('user_id')
+        expiration_date = request.json.get('expiration_date')
+        name = request.json.get('name')
+        cvv = request.json.get('cvv')
+        card = CardDB(number=number, user_id=user_id, name=name,
+                cvv=cvv, expiration_date=expiration_date)
+        db.session.add(card)
+        db.session.commit()
+        return "Success"
+    return "Fuck you"
+
+
+@app.route('/vehicles', methods=['GET','POST'])
 def vehicles():
+    if request.method == 'GET':
+        vehicles = VehicleDB.query.all()
+        json_vehicles = map(get_vehicle_json, vehicles)
+        return jsonify(vehicles=json_vehicles)
     if request.method == 'POST':
         user_id = request.json.get('user_id')
 
@@ -41,6 +75,7 @@ def vehicles():
                             year=year, license=license)
         db.session.add(vehicle)
 
+        db.session.commit()
         entry = UserToVehicleDB(user_id=user_id,
                                 vehicle_id=vehicle.id)
         db.session.add(entry)
@@ -52,28 +87,38 @@ def vehicles():
 @app.route('/claim', methods=['POST'])
 def claim():
     if request.method == 'POST':
+        user_id = request.json.get('user_id')
+        user = UserDB.query.filter_by(id=user_id).first()
         parking_id = request.json.get('parking_id')
         parking = ParkingDB.query.filter_by(id=parking_id).first()
-        if parking is not None:
+        if parking is not None and user is not None:
+            user.last_claimed = datetime.now()
             parking.num_spots -= 1
             db.session.commit()
             return "Success"
         else:
-            return "Failure"
+            return "Fuck you"
     return "Fuck you"
 
 
 @app.route('/relinquish', methods=['POST'])
 def relinquish():
     if request.method == 'POST':
+        user_id = request.json.get('user_id')
+        user = UserDB.query.filter_by(id=user_id).first()
         parking_id = request.json.get('parking_id')
         parking = ParkingDB.query.filter_by(id=parking_id).first()
-        if parking is not None:
+        if parking is not None and user is not None:
+            end_time = datetime.now()
+            start_time = user.last_claimed
+            delta = end_time - start_time
+            charge = delta * parking.rate
+            user.balance += charge
             parking.num_spots += 1
             db.session.commit()
             return "Success"
         else:
-            return "Failure"
+            return "Fuck you"
     return "Fuck you"
 
 
@@ -121,18 +166,19 @@ def get_parking_json(parking):
 def get_user_json(user):
 
     vehicle_entries = UserToVehicleDB.query.filter_by(user_id=user.id).all()
-
     vehicles = []
-
     for entry in vehicle_entries:
-        vehicles.add(VehicleDB.query.filter_by(id=entry.vehicle_id).all())
-
+        vehicles.append(VehicleDB.query.filter_by(id=entry.vehicle_id).first())
     vehicle_json = map(get_vehicle_json, vehicles)
+
+    cards = CardDB.query.filter_by(user_id=user.id).all()
+    cards_json = map(get_card_json, cards)
 
     return {'id': user.id,
             'last_claimed': user.last_claimed,
             'balance': user.balance,
-            'vehicles': jsonify(vehicles=vehicle_json) }
+            'vehicles': vehicle_json,
+            'cards': cards_json }
 
 
 def get_vehicle_json(vehicle):
