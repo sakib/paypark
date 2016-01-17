@@ -10,6 +10,7 @@ def index():
     return "Fuck you!"
 
 
+# Get all users or create new user
 @app.route('/users', methods=['GET','POST'])
 def users():
     if request.method == 'GET':
@@ -24,6 +25,7 @@ def users():
     return "Fuck you"
 
 
+# Get information for one user, his cards, vehicles and parking status
 @app.route('/users/<user_id>', methods=['GET'])
 def user(user_id):
     if request.method == 'GET':
@@ -33,6 +35,7 @@ def user(user_id):
     return "Fuck you"
 
 
+# Get all cards or submit new card
 @app.route('/cards', methods=['GET','POST'])
 def cards():
     if request.method == 'GET':
@@ -53,6 +56,38 @@ def cards():
     return "Fuck you"
 
 
+# Get all payments or submit new payment
+@app.route('/payments', methods=['GET','POST'])
+def payments():
+    if request.method == 'GET':
+        payments = PaymentDB.query.all()
+        payments_json = map(get_payment_json, payments)
+        return jsonify(payments=payments_json)
+    if request.method == 'POST':
+        amount = request.json.get('amount')
+        card_number = request.json.get('card_number')
+        user_id = request.json.get('user_id')
+        time = datetime.now()
+
+        payment = PaymentDB(amount=amount, time=time,
+                card_number=card_number, user_id=user_id)
+        db.session.add(payment)
+        db.session.commit()
+        return "Success"
+    return "Fuck you"
+
+
+# Get payment history for a user
+@app.route('/payments/<user_id>', methods=['GET'])
+def payment(user_id):
+    if request.method == 'GET':
+        payments = PaymentDB.query.filter_by(user_id=user_id).all()
+        payments_json = map(get_payment_json, payments)
+        return jsonify(payments=payments_json)
+    return "Fuck you"
+
+
+# Get all vehicles or add new vehicles under existing users
 @app.route('/vehicles', methods=['GET','POST'])
 def vehicles():
     if request.method == 'GET':
@@ -84,6 +119,30 @@ def vehicles():
     return "Fuck you"
 
 
+# Edit vehicle
+@app.route('/vehicles/<vehicle_id>', methods=['POST'])
+def vehicle(vehicle_id):
+    if request.method == 'POST':
+        vehicle = VehicleDB.query.filter_by(id=vehicle_id).first()
+        if vehicle is None:
+            return "Fuck you"
+        make = request.json.get('make')
+        model = request.json.get('model')
+        year = request.json.get('year')
+        license = request.json.get('license')
+        if make is not None:
+            vehicle.make = make
+        if model is not None:
+            vehicle.model = model
+        if year is not None:
+            vehicle.year = year
+        if license is not None:
+            vehicle.license = license
+        db.session.commit()
+    return "Fuck you"
+
+
+# Claim a parking spot.
 @app.route('/claim', methods=['POST'])
 def claim():
     if request.method == 'POST':
@@ -105,6 +164,7 @@ def claim():
     return "Fuck you"
 
 
+# Give up a parking spot.
 @app.route('/relinquish', methods=['POST'])
 def relinquish():
     if request.method == 'POST':
@@ -131,6 +191,7 @@ def relinquish():
     return "Fuck you"
 
 
+# Get all parking information
 @app.route('/parking', methods=['GET'])
 def parking():
     if request.method == 'GET':
@@ -139,6 +200,7 @@ def parking():
         return jsonify(parking=json_parking)
 
 
+# Add new or edit existing parking spaces.
 @app.route('/register', methods=['GET','POST'])
 def register():
     if request.method == 'GET':
@@ -153,7 +215,14 @@ def register():
         parking = ParkingDB(lat=lat, long=long,
             num_spots=num_spots, street=street, rate=rate)
 
-        db.session.add(parking)
+        parking_exists = ParkingDB.query.filter_by(lat=lat,
+                            long=long, street=street).all()
+        if parking_exists is not None:
+            parking_exists.num_spots = num_spots
+            parking_exists.rate = rate
+        else:
+            db.session.add(parking)
+
         db.session.commit()
 
         return render_template("park.html",
@@ -173,7 +242,6 @@ def get_parking_json(parking):
 
 
 def get_user_json(user):
-
     vehicle_entries = UserToVehicleDB.query.filter_by(user_id=user.id).all()
     vehicles = []
     for entry in vehicle_entries:
@@ -207,9 +275,20 @@ def get_vehicle_json(vehicle):
             'year': vehicle.year,
             'license': vehicle.license }
 
+
 def get_card_json(card):
     return {'number': card.number,
             'user_id': card.user_id,
             'cvv': card.cvv,
             'name': card.name,
             'expiration_date': str(card.expiration_date) }
+
+
+def get_payment_json(payment):
+    card = CardDB.query.filter_by(number=payment.card_number).first()
+    card_json = get_card_json(card)
+    return {'id': payment.id,
+            'amount': payment.amount,
+            'time': str(payment.time),
+            'user_id': payment.user_id,
+            'card': card_json }
