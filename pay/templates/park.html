@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link crossorigin="anonymous" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+    integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" rel="stylesheet">
+    <title>PayPark</title>
+</head>
+<body>
+    <form action="{{ url_for('register') }}" id="register" method="POST" name="register">
+        <div class="links-box col-xs-12 col-sm-8 col-sm-offset-1">
+          <div class="form-group">
+            <h1>Parking</h1><br>
+            <label for="latitude">Latitude</label>
+            <input class="form-control" id="latitude" name="latitude" placeholder="" type="text">
+            <br>
+            <label for="longitude">Longitude</label> 
+            <input class="form-control" id="longitude" name="longitude" placeholder="" type="text">
+            <br>
+            <label for="num_spots">Number of Spots</label>
+            <input class="form-control" id="num_spots" name="num_spots" placeholder="" type="text">
+            <br>
+            <label for="street">Street Name</label> 
+            <input class="form-control" id="street" name="street" placeholder="" type="text">
+            <br>
+            <label for="rate">Hourly Rate</label> 
+            <input class="form-control" id="rate" name="rate" placeholder="" type="text"><br>
+            <br>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-primary" type="submit">Submit</button>
+          </div>
+        </div>
+    </form>
+</body>
+</html>
