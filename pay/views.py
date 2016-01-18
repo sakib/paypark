@@ -7,7 +7,7 @@ from datetime import datetime
 
 @app.route('/')
 def index():
-    return "Fuck you!"
+    return "Pay Park"
 
 
 # Get all users or create new user
@@ -22,7 +22,7 @@ def users():
         db.session.add(user)
         db.session.commit()
         return "Success"
-    return "Fuck you"
+    return "Error, try again"
 
 
 # Get information for one user, his cards, vehicles and parking status
@@ -32,7 +32,7 @@ def user(user_id):
         user = UserDB.query.filter_by(id=user_id).first()
         json_user = get_user_json(user)
         return jsonify(user=json_user)
-    return "Fuck you"
+    return "Error, try again"
 
 
 # Get all cards or submit new card
@@ -67,7 +67,7 @@ def cards():
 
         db.session.commit()
         return "Success"
-    return "Fuck you"
+    return "Error, try again"
 
 
 # Get all payments or submit new payment
@@ -87,7 +87,7 @@ def payments():
         user = UserDB.query.filter_by(id=user_id).first()
 
         if user is None or card is None:
-            return "Fuck you"
+            return "Error, try again"
 
         user.balance += float(amount)
 
@@ -96,7 +96,7 @@ def payments():
         db.session.add(payment)
         db.session.commit()
         return "Success"
-    return "Fuck you"
+    return "Error, try again"
 
 
 # Get payment history for a user
@@ -106,7 +106,7 @@ def payment(user_id):
         payments = PaymentDB.query.filter_by(user_id=user_id).all()
         payments_json = map(get_payment_json, payments)
         return jsonify(payments=payments_json)
-    return "Fuck you"
+    return "Error, try again"
 
 
 # Get all vehicles or add new vehicles under existing users or edit existing vehicles
@@ -122,7 +122,7 @@ def vehicles():
 
         user = UserDB.query.filter_by(id=user_id).first()
         if user is None:
-            return "Fuck you"
+            return "Error, try again"
 
         make = request.json.get('make')
         model = request.json.get('model')
@@ -140,7 +140,7 @@ def vehicles():
         else: # Find old
             vehicle = VehicleDB.query.filter_by(id=vehicle_id).first()
             if vehicle is None:
-                return "Fuck you"
+                return "Error, try again"
             if make is not None:
                 vehicle.make = make
             if model is not None:
@@ -152,7 +152,7 @@ def vehicles():
 
         db.session.commit()
         return "Success"
-    return "Fuck you"
+    return "Error, try again"
 
 
 # Claim a parking spot.
@@ -176,8 +176,8 @@ def claim():
             db.session.commit()
             return "Success"
         else:
-            return "Fuck you"
-    return "Fuck you"
+            return "Error, try again"
+    return "Error, try again"
 
 
 # Give up a parking spot.
@@ -211,8 +211,8 @@ def relinquish():
             db.session.commit()
             return "Success"
         else:
-            return "Fuck you"
-    return "Fuck you"
+            return "Error, try again"
+    return "Error, try again"
 
 
 # Get all parking information
@@ -253,7 +253,7 @@ def register():
                     lat = lat, long = long,
                     num_spots = num_spots,
                     street = street, rate = rate)
-    return "Fuck you"
+    return "Error, try again"
 
 
 def get_parking_json(parking):
